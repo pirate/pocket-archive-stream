@@ -54,6 +54,7 @@ setuptools.setup(
         "base32-crockford==0.3.0",
         "django==3.0.8",
         "django-extensions==3.0.3",
+        "djangorestframework==3.12.2",
 
         "dateparser",
         "ipython",

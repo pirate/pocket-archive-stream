@@ -21,6 +21,9 @@ archivebox.egg-info/dependency_links.txt
 archivebox.egg-info/entry_points.txt
 archivebox.egg-info/requires.txt
 archivebox.egg-info/top_level.txt
+archivebox/api/__init__.py
+archivebox/api/serializers.py
+archivebox/api/views.py
 archivebox/cli/__init__.py
 archivebox/cli/archivebox_add.py
 archivebox/cli/archivebox_config.py

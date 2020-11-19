@@ -6,11 +6,11 @@ from django.conf import settings
 from django.views.generic.base import RedirectView
 
 from core.views import MainIndex, LinkDetails, PublicArchiveView, AddView
+from api import router
 
-
-# print('DEBUG', settings.DEBUG)
 
 urlpatterns = [
+    path('api/', include(router.urls)),
     path('robots.txt', static.serve, {'document_root': settings.OUTPUT_DIR, 'path': 'robots.txt'}),
     path('favicon.ico', static.serve, {'document_root': settings.OUTPUT_DIR, 'path': 'favicon.ico'}),
 
