@@ -7,9 +7,11 @@ from typing import IO, Iterable, Optional
 from configparser import ConfigParser
 
 from pathlib import Path
+
+from django.db.models import Model
+
 from ..vendor.pocket import Pocket
 
-from ..index.schema import Link
 from ..util import enforce_types
 from ..system import atomic_write
 from ..config import (
@@ -46,19 +48,21 @@ def get_pocket_articles(api: Pocket, since=None, page=0):
         api.last_since = body['since']
 
 
-def link_from_article(article: dict, sources: list):
+def snapshot_from_article(article: dict, sources: list):
+    from core.models import Snapshot
+
     url: str = article['resolved_url'] or article['given_url']
     broken_protocol = _BROKEN_PROTOCOL_RE.match(url)
     if broken_protocol:
         url = url.replace(f'{broken_protocol.group(1)}:/', f'{broken_protocol.group(1)}://')
     title = article['resolved_title'] or article['given_title'] or url
 
-    return Link(
+    return Snapshot(
         url=url,
         timestamp=article['time_read'],
         title=title,
-        tags=article.get('tags'),
-        sources=sources
+        #tags=article.get('tags'),
+        #sources=sources
     )
 
 
@@ -95,7 +99,7 @@ def should_parse_as_pocket_api(text: str) -> bool:
 
 
 @enforce_types
-def parse_pocket_api_export(input_buffer: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_pocket_api_export(input_buffer: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse bookmarks from the Pocket API"""
 
     input_buffer.seek(0)
@@ -108,6 +112,6 @@ def parse_pocket_api_export(input_buffer: IO[str], **_kwargs) -> Iterable[Link]:
             api.last_since = None
     
             for article in get_pocket_articles(api, since=read_since(username)):
-                yield link_from_article(article, sources=[line])
+                yield snapshot_from_article(article, sources=[line])
     
             write_since(username, api.last_since)

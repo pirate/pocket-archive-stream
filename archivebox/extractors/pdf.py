@@ -3,7 +3,9 @@ __package__ = 'archivebox.extractors'
 from pathlib import Path
 from typing import Optional
 
-from ..index.schema import Link, ArchiveResult, ArchiveOutput, ArchiveError
+from django.db.models import Model
+
+from ..index.schema import ArchiveResult, ArchiveOutput, ArchiveError
 from ..system import run, chmod_file
 from ..util import (
     enforce_types,
@@ -17,10 +19,12 @@ from ..config import (
 )
 from ..logging_util import TimedProgress
 
+# output = 'output.pdf'
 
 @enforce_types
-def should_save_pdf(link: Link, out_dir: Optional[Path]=None, overwrite: Optional[bool]=False) -> bool:
-    if is_static_file(link.url):
+def should_save_pdf(snapshot: Model, verwrite: Optional[bool]=False, out_dir: Optional[Path]=None) -> bool:
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
+    if is_static_file(snapshot.url):
         return False
 
     out_dir = out_dir or Path(link.link_dir)
@@ -31,15 +35,15 @@ def should_save_pdf(link: Link, out_dir: Optional[Path]=None, overwrite: Optiona
 
 
 @enforce_types
-def save_pdf(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
+def save_pdf(snapshot: Model, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
     """print PDF of site to file using chrome --headless"""
 
-    out_dir = out_dir or Path(link.link_dir)
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
     output: ArchiveOutput = 'output.pdf'
     cmd = [
         *chrome_args(TIMEOUT=timeout),
         '--print-to-pdf',
-        link.url,
+        snapshot.url,
     ]
     status = 'succeeded'
     timer = TimedProgress(timeout, prefix='      ')

@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Iterator, Mapping
 from pathlib import Path
 
+from django.db.models import Model
 from django.utils.html import format_html, mark_safe
 from collections import defaultdict
 
@@ -47,24 +48,24 @@ def parse_html_main_index(out_dir: Path=OUTPUT_DIR) -> Iterator[str]:
     return ()
 
 @enforce_types
-def generate_index_from_links(links: List[Link], with_headers: bool):
+def generate_index_from_snapshots(snapshots: List[Model], with_headers: bool):
     if with_headers:
-        output = main_index_template(links)
+        output = main_index_template(snapshots)
     else:
-        output = main_index_template(links, template=MINIMAL_INDEX_TEMPLATE)
+        output = main_index_template(snapshots, template=MINIMAL_INDEX_TEMPLATE)
     return output
 
 @enforce_types
-def main_index_template(links: List[Link], template: str=MAIN_INDEX_TEMPLATE) -> str:
+def main_index_template(snapshots: List[Model], template: str=MAIN_INDEX_TEMPLATE) -> str:
     """render the template for the entire main index"""
 
     return render_django_template(template, {
         'version': VERSION,
         'git_sha': GIT_SHA,
-        'num_links': str(len(links)),
+        'num_snapshots': str(len(snapshots)),
         'date_updated': datetime.now().strftime('%Y-%m-%d'),
         'time_updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
-        'links': [link._asdict(extended=True) for link in links],
+        'snapshots': snapshots,
         'FOOTER_INFO': FOOTER_INFO,
     })
 
@@ -72,38 +73,36 @@ def main_index_template(links: List[Link], template: str=MAIN_INDEX_TEMPLATE) ->
 ### Link Details Index
 
 @enforce_types
-def write_html_link_details(link: Link, out_dir: Optional[str]=None) -> None:
-    out_dir = out_dir or link.link_dir
+def write_html_snapshot_details(snapshot: Model, out_dir: Optional[str]=None) -> None:
+    out_dir = out_dir or snapshot.snapshot_dir
 
-    rendered_html = link_details_template(link)
+    rendered_html = snapshot_details_template(snapshot)
     atomic_write(str(Path(out_dir) / HTML_INDEX_FILENAME), rendered_html)
 
 
 @enforce_types
-def link_details_template(link: Link) -> str:
+def snapshot_details_template(snapshot: Model) -> str:
 
     from ..extractors.wget import wget_output_path
 
-    link_info = link._asdict(extended=True)
-
     return render_django_template(LINK_DETAILS_TEMPLATE, {
-        **link_info,
-        **link_info['canonical'],
+        **snapshot.as_json(),
+        **snapshot.canonical_outputs(),
         'title': htmlencode(
-            link.title
-            or (link.base_url if link.is_archived else TITLE_LOADING_MSG)
+            snapshot.title
+            or (snapshot.base_url if snapshot.is_archived else TITLE_LOADING_MSG)
         ),
-        'url_str': htmlencode(urldecode(link.base_url)),
+        'url_str': htmlencode(urldecode(snapshot.base_url)),
         'archive_url': urlencode(
-            wget_output_path(link)
-            or (link.domain if link.is_archived else '')
+            wget_output_path(snapshot)
+            or (snapshot.domain if snapshot.is_archived else '')
         ) or 'about:blank',
-        'extension': link.extension or 'html',
-        'tags': link.tags or 'untagged',
-        'size': printable_filesize(link.archive_size) if link.archive_size else 'pending',
-        'status': 'archived' if link.is_archived else 'not yet archived',
-        'status_color': 'success' if link.is_archived else 'danger',
-        'oldest_archive_date': ts_to_date(link.oldest_archive_date),
+        'extension': snapshot.extension or 'html',
+        'tags': snapshot.tags_str() or 'untagged',
+        'size': printable_filesize(snapshot.archive_size) if snapshot.archive_size else 'pending',
+        'status': 'archived' if snapshot.is_archived else 'not yet archived',
+        'status_color': 'success' if snapshot.is_archived else 'danger',
+        'oldest_archive_date': ts_to_date(snapshot.oldest_archive_date),
         'SAVE_ARCHIVE_DOT_ORG': SAVE_ARCHIVE_DOT_ORG,
     })
 
@@ -121,9 +120,8 @@ def snapshot_icons(snapshot) -> str:
     # start = datetime.now()
 
     archive_results = snapshot.archiveresult_set.filter(status="succeeded")
-    link = snapshot.as_link()
-    path = link.archive_path
-    canon = link.canonical_outputs()
+    path = snapshot.archive_path
+    canon = snapshot.canonical_outputs()
     output = ""
     output_template = '<a href="/{}/{}" class="exists-{}" title="{}">{}</a> &nbsp;'
     icons = {

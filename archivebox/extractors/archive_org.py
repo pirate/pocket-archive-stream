@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 from collections import defaultdict
 
-from ..index.schema import Link, ArchiveResult, ArchiveOutput, ArchiveError
+from django.db.models import Model
+
+from ..index.schema import ArchiveResult, ArchiveOutput, ArchiveError
 from ..system import run, chmod_file
 from ..util import (
     enforce_types,
@@ -23,10 +25,13 @@ from ..config import (
 from ..logging_util import TimedProgress
 
 
+# output = '{domain}/'
+
 
 @enforce_types
-def should_save_archive_dot_org(link: Link, out_dir: Optional[Path]=None, overwrite: Optional[bool]=False) -> bool:
-    if is_static_file(link.url):
+def should_save_archive_dot_org(snapshot: Model, overwrite: Optional[bool]=False, out_dir: Optional[Path]=None) -> bool:
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
+    if is_static_file(snapshot.url):
         return False
 
     out_dir = out_dir or Path(link.link_dir)
@@ -37,13 +42,13 @@ def should_save_archive_dot_org(link: Link, out_dir: Optional[Path]=None, overwr
     return SAVE_ARCHIVE_DOT_ORG
 
 @enforce_types
-def save_archive_dot_org(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
+def save_archive_dot_org(snapshot: Model, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
     """submit site to archive.org for archiving via their service, save returned archive url"""
 
-    out_dir = out_dir or Path(link.link_dir)
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
     output: ArchiveOutput = 'archive.org.txt'
     archive_org_url = None
-    submit_url = 'https://web.archive.org/save/{}'.format(link.url)
+    submit_url = 'https://web.archive.org/save/{}'.format(snapshot.url)
     cmd = [
         CURL_BINARY,
         *CURL_ARGS,

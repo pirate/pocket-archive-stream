@@ -2,7 +2,7 @@ from typing import List, Union
 from pathlib import Path
 from importlib import import_module
 
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Model
 
 from archivebox.index.schema import Link
 from archivebox.util import enforce_types
@@ -28,24 +28,22 @@ def import_backend():
     return backend
 
 @enforce_types
-def write_search_index(link: Link, texts: Union[List[str], None]=None, out_dir: Path=OUTPUT_DIR, skip_text_index: bool=False) -> None:
+def write_search_index(snapshot: Model, texts: Union[List[str], None]=None, out_dir: Path=OUTPUT_DIR, skip_text_index: bool=False) -> None:
     if not indexing_enabled():
         return
 
     if not skip_text_index and texts:
         from core.models import Snapshot
 
-        snap = Snapshot.objects.filter(url=link.url).first()
         backend = import_backend()
-        if snap:
-            try:
-                backend.index(snapshot_id=str(snap.id), texts=texts)
-            except Exception as err:
-                stderr()
-                stderr(
-                    f'[X] The search backend threw an exception={err}:',
+        try:
+            backend.index(snapshot_id=str(snapshot.id), texts=texts)
+        except Exception as err:
+            stderr()
+            stderr(
+                f'[X] The search backend threw an exception={err}:',
                 color='red',
-                )
+            )
 
 @enforce_types
 def query_search_index(query: str, out_dir: Path=OUTPUT_DIR) -> QuerySet:
@@ -85,17 +83,17 @@ def flush_search_index(snapshots: QuerySet):
         )
 
 @enforce_types
-def index_links(links: Union[List[Link],None], out_dir: Path=OUTPUT_DIR):
-    if not links:
+def index_snapshots(snapshots: Union[List[Model],None], out_dir: Path=OUTPUT_DIR):
+    if not snapshots:
         return
 
     from core.models import Snapshot, ArchiveResult
 
-    for link in links:
-        snap = Snapshot.objects.filter(url=link.url).first()
+    for snapshot in snapshots:
+        snap = Snapshot.objects.filter(url=snapshot.url).first()
         if snap: 
             results = ArchiveResult.objects.indexable().filter(snapshot=snap)
-            log_index_started(link.url)
+            log_index_started(snapshot.url)
             try:
                 texts = get_indexable_content(results)
             except Exception as err:
@@ -105,4 +103,4 @@ def index_links(links: Union[List[Link],None], out_dir: Path=OUTPUT_DIR):
                     color='red',
                     ) 
             else:
-                write_search_index(link, texts, out_dir=out_dir)
+                write_search_index(snapshot, texts, out_dir=out_dir)

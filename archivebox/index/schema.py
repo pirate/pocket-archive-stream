@@ -408,6 +408,7 @@ class Link:
         return latest
 
 
+
     def canonical_outputs(self) -> Dict[str, Optional[str]]:
         """predict the expected output paths that should be present after archiving"""
 

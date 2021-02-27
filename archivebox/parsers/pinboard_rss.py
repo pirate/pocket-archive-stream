@@ -4,9 +4,10 @@ __package__ = 'archivebox.parsers'
 from typing import IO, Iterable
 from datetime import datetime
 
+from django.db.models import Model
+
 from xml.etree import ElementTree
 
-from ..index.schema import Link
 from ..util import (
     htmldecode,
     enforce_types,
@@ -14,8 +15,9 @@ from ..util import (
 
 
 @enforce_types
-def parse_pinboard_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_pinboard_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse Pinboard RSS feed files into links"""
+    from core.models import Snapshot
 
     rss_file.seek(0)
     root = ElementTree.parse(rss_file).getroot()
@@ -38,10 +40,10 @@ def parse_pinboard_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
         else:
             time = datetime.now()
 
-        yield Link(
+        yield Snapshot(
             url=htmldecode(url),
             timestamp=str(time.timestamp()),
             title=htmldecode(title) or None,
-            tags=htmldecode(tags) or None,
-            sources=[rss_file.name],
+            #tags=htmldecode(tags) or None,
+            #sources=[rss_file.name],
         )

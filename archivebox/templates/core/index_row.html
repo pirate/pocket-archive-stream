@@ -1,37 +1,59 @@
 {% load static %}
 
 <tr>
-    <td title="{{link.timestamp}}"> {% if link.bookmarked_date  %} {{ link.bookmarked_date }} {% else %} {{ link.added }} {% endif %} </td>
-    <td class="title-col" style="opacity: {% if link.title %}1{% else %}0.3{% endif %}">
-        {% if link.is_archived %}
-            <a href="archive/{{link.timestamp}}/index.html"><img src="archive/{{link.timestamp}}/favicon.ico" onerror="this.style.display='none'" class="link-favicon" decoding="async"></a>
+{% comment %}
+    <!-- from upstream, may need to merge these two -->
+    <td title="{{snapshot.timestamp}}"> {% if snapshot.bookmarked_date  %} {{ snapshot.bookmarked_date }} {% else %} {{ snapshot.added }} {% endif %} </td>
+    <td class="title-col">
+        {% if snapshot.is_archived %}
+            <a href="archive/{{snapshot.timestamp}}/index.html"><img src="archive/{{snapshot.timestamp}}/favicon.ico" onerror="this.style.display='none'" class="snapshot-favicon" decoding="async"></a>
         {% else %}
-            <a href="archive/{{link.timestamp}}/index.html"><img src="{% static 'spinner.gif' %}" onerror="this.style.display='none'" class="link-favicon" decoding="async" style="height: 15px"></a>
+            <a href="archive/{{snapshot.timestamp}}/index.html"><img src="{% static 'spinner.gif' %}" onerror="this.style.display='none'" class="snapshot-favicon" decoding="async"></a>
+        {% endif %}
+            <a href="archive/{{snapshot.timestamp}}/{{snapshot.canonical_outputs.wget_path}}" title="{{snapshot.title}}">
+                <span data-title-for="{{snapshot.url}}" data-archived="{{snapshot.is_archived}}">{{snapshot.title|default:'Loading...'}}</span>
+                <small style="float:right">{% if snapshot.tags_str != None %} {{snapshot.tags_str|default:''}} {% else %} untagged {% endif %}</small>
+            </a>
+    </td>
+    <td>
+        <a href="archive/{{snapshot.timestamp}}/index.html">📄 
+            <span data-number-for="{{snapshot.url}}" title="Fetching any missing files...">{% if snapshot.icons  %} {{snapshot.icons}} {% else %} {{ snapshot.num_outputs}} {% endif %}<img src="{% static 'spinner.gif' %}" class="files-spinner" decoding="async"/></span>
+        </a>
+    </td>
+   <td style="text-align:left"><a href="{{snapshot.url}}">{{snapshot.url}}</a></td>
+{% endcomment %}
+
+    <td title="{{snapshot.timestamp}}"> {% if snapshot.bookmarked_date  %} {{ snapshot.bookmarked_date }} {% else %} {{ snapshot.added }} {% endif %} </td>
+    <td class="title-col" style="opacity: {% if snapshot.title %}1{% else %}0.3{% endif %}">
+        {% if snapshot.is_archived %}
+            <a href="archive/{{snapshot.timestamp}}/index.html"><img src="archive/{{snapshot.timestamp}}/favicon.ico" onerror="this.style.display='none'" class="snapshot-favicon" decoding="async"></a>
+        {% else %}
+            <a href="archive/{{snapshot.timestamp}}/index.html"><img src="{% static 'spinner.gif' %}" onerror="this.style.display='none'" class="snapshot-favicon" decoding="async" style="height: 15px"></a>
         {% endif %}
 
-        <a href="archive/{{link.timestamp}}/index.html" title="{{link.title|default:'Not yet archived...'}}">
-            <span data-title-for="{{link.url}}" data-archived="{{link.is_archived}}">{{link.title|default:'Loading...'}}</span>
-            {% if link.tags_str %}
+        <a href="archive/{{snapshot.timestamp}}/index.html" title="{{snapshot.title|default:'Not yet archived...'}}">
+            <span data-title-for="{{snapshot.url}}" data-archived="{{snapshot.is_archived}}">{{snapshot.title|default:'Loading...'}}</span>
+            {% if snapshot.tags_str %}
                 <span class="tags" style="float: right; border-radius: 5px; background-color: #bfdfff; padding: 2px 5px; margin-left: 4px; margin-top: 1px;">
-                    {% if link.tags_str != None %}
-                        {{link.tags_str|default:''}}
+                    {% if snapshot.tags_str != None %}
+                        {{snapshot.tags_str|default:''}}
                     {% else %}
-                        {{ link.tags|default:'' }}
+                        {{ snapshot.tags|default:'' }}
                     {% endif %}
                 </span>
             {% endif %}
         </a>
     </td>
     <td>
-        <span data-number-for="{{link.url}}" title="Fetching any missing files...">
-            {% if link.icons  %}
-                {{link.icons}} <small style="float:right; opacity: 0.5">{{link.num_outputs}}</small>
+        <span data-number-for="{{snapshot.url}}" title="Fetching any missing files...">
+            {% if snapshot.icons  %}
+                {{snapshot.icons}} <small style="float:right; opacity: 0.5">{{snapshot.num_outputs}}</small>
             {% else %}
-                <a href="archive/{{link.timestamp}}/index.html">📄 
-                    {{link.num_outputs}} <img src="{% static 'spinner.gif' %}" onerror="this.style.display='none'" class="files-spinner" decoding="async" style="height: 15px"/>
+                <a href="archive/{{snapshot.timestamp}}/index.html">📄 
+                    {{snapshot.num_outputs}} <img src="{% static 'spinner.gif' %}" onerror="this.style.display='none'" class="files-spinner" decoding="async" style="height: 15px"/>
                 </a>
             {% endif %}
         </span>
     </td>
-   <td style="text-align:left"><a href="{{link.url}}">{{link.url}}</a></td>
+   <td style="text-align:left"><a href="{{snapshot.url}}">{{snapshot.url}}</a></td>
 </tr>

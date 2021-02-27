@@ -6,7 +6,9 @@ from subprocess import CompletedProcess
 from typing import Optional, List
 import json
 
-from ..index.schema import Link, ArchiveResult, ArchiveError
+from django.db.models import Model
+
+from ..index.schema import ArchiveResult, ArchiveError
 from ..system import run, atomic_write
 from ..util import (
     enforce_types,
@@ -37,22 +39,23 @@ def ShellError(cmd: List[str], result: CompletedProcess, lines: int=20) -> Archi
 
 
 @enforce_types
-def should_save_mercury(link: Link, out_dir: Optional[str]=None, overwrite: Optional[bool]=False) -> bool:
-    if is_static_file(link.url):
+def should_save_mercury(snapshot: Model, overwrite: Optional[bool]=False, out_dir: Optional[str]=None) -> bool:
+    out_dir = out_dir or snapshot.snapshot_dir
+    if is_static_file(snapshot.url):
         return False
 
-    out_dir = out_dir or Path(link.link_dir)
-    if not overwrite and (out_dir / 'mercury').exists():
+    output = Path(out_dir or snapshot.snapshot_dir) / 'mercury'
+    if not overwrite and output.exists():
         return False
 
-    return SAVE_MERCURY
+    return SAVE_MERCURY and MERCURY_VERSION
 
 
 @enforce_types
-def save_mercury(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
+def save_mercury(snapshot: Model, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
     """download reader friendly version using @postlight/mercury-parser"""
 
-    out_dir = Path(out_dir or link.link_dir)
+    out_dir = Path(out_dir or snapshot.snapshot_dir)
     output_folder = out_dir.absolute() / "mercury"
     output = str(output_folder)
 
@@ -62,7 +65,7 @@ def save_mercury(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT)
         # Get plain text version of article
         cmd = [
             DEPENDENCIES['MERCURY_BINARY']['path'],
-            link.url,
+            snapshot.url,
             "--format=text"
         ]
         result = run(cmd, cwd=out_dir, timeout=timeout)
@@ -74,7 +77,7 @@ def save_mercury(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT)
         # Get HTML version of article
         cmd = [
             DEPENDENCIES['MERCURY_BINARY']['path'],
-            link.url
+            snapshot.url
         ]
         result = run(cmd, cwd=out_dir, timeout=timeout)
         try:

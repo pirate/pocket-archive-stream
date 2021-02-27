@@ -4,7 +4,8 @@ __package__ = 'archivebox.parsers'
 from typing import IO, Iterable
 from datetime import datetime
 
-from ..index.schema import Link
+from django.db.models import Model
+
 from ..util import (
     htmldecode,
     enforce_types,
@@ -12,8 +13,9 @@ from ..util import (
 )
 
 @enforce_types
-def parse_generic_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_generic_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse RSS XML-format files into links"""
+    from core.models import Snapshot
 
     rss_file.seek(0)
     items = rss_file.read().split('<item>')
@@ -40,10 +42,10 @@ def parse_generic_rss_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
         time = datetime.strptime(ts_str, "%a, %d %b %Y %H:%M:%S %z")
         title = str_between(get_row('title'), '<![CDATA[', ']]').strip()
 
-        yield Link(
+        yield Snapshot(
             url=htmldecode(url),
             timestamp=str(time.timestamp()),
             title=htmldecode(title) or None,
-            tags=None,
-            sources=[rss_file.name],
+            #tags=None,
+            #sources=[rss_file.name],
         )

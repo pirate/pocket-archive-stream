@@ -6,7 +6,8 @@ import re
 from typing import IO, Iterable
 from datetime import datetime
 
-from ..index.schema import Link
+from django.db.models import Model
+
 from ..util import (
     htmldecode,
     enforce_types,
@@ -14,8 +15,9 @@ from ..util import (
 
 
 @enforce_types
-def parse_pocket_html_export(html_file: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_pocket_html_export(html_file: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse Pocket-format bookmarks export files (produced by getpocket.com/export/)"""
+    from core.models import Snapshot
 
     html_file.seek(0)
     pattern = re.compile("^\\s*<li><a href=\"(.+)\" time_added=\"(\\d+)\" tags=\"(.*)\">(.+)</a></li>", re.UNICODE)
@@ -29,10 +31,10 @@ def parse_pocket_html_export(html_file: IO[str], **_kwargs) -> Iterable[Link]:
             tags = match.group(3)
             title = match.group(4).replace(' — Readability', '').replace('http://www.readability.com/read?url=', '')
             
-            yield Link(
+            yield Snapshot(
                 url=htmldecode(url),
                 timestamp=str(time.timestamp()),
                 title=htmldecode(title) or None,
-                tags=tags or '',
-                sources=[html_file.name],
+                #tags=tags or '',
+                #sources=[html_file.name],
             )

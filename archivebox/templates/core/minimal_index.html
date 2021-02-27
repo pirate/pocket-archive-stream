@@ -1,24 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Archived Sites</title>
-        <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
-    </head>
-    <body data-status="{{status}}">
-        <table id="table-bookmarks">
-            <thead>
-                <tr class="thead-tr">
-                    <th style="width: 100px;">Bookmarked</th>
-                    <th style="width: 26vw;">Saved Link ({{num_links}})</th>
-                    <th style="width: 50px">Files</th>
-                    <th style="width: 16vw;whitespace:nowrap;overflow-x:hidden;">Original URL</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for link in links %}
-                    {% include "index_row.html" with link=link %} 
-                {% endfor %}
-            </tbody>
-        </table>
-    </body>
+  <head>
+    <title>Archived Sites</title>
+    <meta
+      charset="utf-8"
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+  </head>
+  <body data-status="{{status}}">
+    <table id="table-bookmarks">
+      <thead>
+        <tr class="thead-tr">
+          <th style="width: 100px">Bookmarked</th>
+          <th style="width: 26vw">Saved Link ({{num_links}})</th>
+          <th style="width: 50px">Files</th>
+          <th style="width: 16vw; whitespace: nowrap; overflow-x: hidden">
+            Original URL
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snapshot in snapshots %}
+          {% include "index_row.html" with snapshot=snapshot %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
 </html>

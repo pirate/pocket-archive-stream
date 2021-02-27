@@ -14,6 +14,8 @@ from typing import IO, Tuple, List, Optional
 from datetime import datetime
 from pathlib import Path 
 
+from django.db.models import Model
+
 from ..system import atomic_write
 from ..config import (
     ANSI,
@@ -64,7 +66,7 @@ PARSERS = (
 
 
 @enforce_types
-def parse_links_memory(urls: List[str], root_url: Optional[str]=None):
+def parse_snapshots_memory(urls: List[str], root_url: Optional[str]=None):
     """
     parse a list of URLS without touching the filesystem
     """
@@ -75,16 +77,16 @@ def parse_links_memory(urls: List[str], root_url: Optional[str]=None):
     file = StringIO()
     file.writelines(urls)
     file.name = "io_string"
-    links, parser = run_parser_functions(file, timer, root_url=root_url)
+    snapshots, parser = run_parser_functions(file, timer, root_url=root_url)
     timer.end()
 
     if parser is None:
         return [], 'Failed to parse'
-    return links, parser
+    return snapshots, parser
     
 
 @enforce_types
-def parse_links(source_file: str, root_url: Optional[str]=None) -> Tuple[List[Link], str]:
+def parse_snapshots(source_file: str, root_url: Optional[str]=None) -> Tuple[List[Model], str]:
     """parse a list of URLs with their metadata from an 
        RSS feed, bookmarks export, or text file
     """
@@ -93,27 +95,27 @@ def parse_links(source_file: str, root_url: Optional[str]=None) -> Tuple[List[Li
 
     timer = TimedProgress(TIMEOUT * 4)
     with open(source_file, 'r', encoding='utf-8') as file:
-        links, parser = run_parser_functions(file, timer, root_url=root_url)
+        snapshots, parser = run_parser_functions(file, timer, root_url=root_url)
 
     timer.end()
     if parser is None:
         return [], 'Failed to parse'
-    return links, parser
+    return snapshots, parser
 
 
-def run_parser_functions(to_parse: IO[str], timer, root_url: Optional[str]=None) -> Tuple[List[Link], Optional[str]]:
-    most_links: List[Link] = []
+def run_parser_functions(to_parse: IO[str], timer, root_url: Optional[str]=None) -> Tuple[List[Model], Optional[str]]:
+    most_snapshots: List[Model] = []
     best_parser_name = None
 
     for parser_name, parser_func in PARSERS:
         try:
-            parsed_links = list(parser_func(to_parse, root_url=root_url))
-            if not parsed_links:
+            parsed_snapshots = list(parser_func(to_parse, root_url=root_url))
+            if not parsed_snapshots:
                 raise Exception('no links found')
 
             # print(f'[√] Parser {parser_name} succeeded: {len(parsed_links)} links parsed')
-            if len(parsed_links) > len(most_links):
-                most_links = parsed_links
+            if len(parsed_snapshots) > len(most_snapshots):
+                most_snapshots = parsed_snapshots
                 best_parser_name = parser_name
                 
         except Exception as err:                                                # noqa
@@ -125,7 +127,7 @@ def run_parser_functions(to_parse: IO[str], timer, root_url: Optional[str]=None)
             # raise
             pass
     timer.end()
-    return most_links, best_parser_name
+    return most_snapshots, best_parser_name
 
 
 @enforce_types

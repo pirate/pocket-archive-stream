@@ -2,12 +2,14 @@ __package__ = 'archivebox.index'
 
 from typing import List, Optional, Any
 
+from django.db.models import Model
+
 from ..util import enforce_types
 from .schema import Link
 
 
 @enforce_types
-def links_to_csv(links: List[Link],
+def snapshots_to_csv(snapshots: List[Model],
                  cols: Optional[List[str]]=None,
                  header: bool=True,
                  separator: str=',',
@@ -20,8 +22,8 @@ def links_to_csv(links: List[Link],
         header_str = separator.join(col.ljust(ljust) for col in cols)
 
     row_strs = (
-        link.to_csv(cols=cols, ljust=ljust, separator=separator)
-        for link in links
+        snapshot.as_csv(cols=cols, ljust=ljust, separator=separator)
+        for snapshot in snapshots
     )
 
     return '\n'.join((header_str, *row_strs))

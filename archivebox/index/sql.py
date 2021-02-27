@@ -3,8 +3,9 @@ __package__ = 'archivebox.index'
 from io import StringIO
 from pathlib import Path
 from typing import List, Tuple, Iterator
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Model
 from django.db import transaction
+from datetime import datetime
 
 from .schema import Link
 from ..util import enforce_types
@@ -28,49 +29,50 @@ def remove_from_sql_main_index(snapshots: QuerySet, out_dir: Path=OUTPUT_DIR) ->
         snapshots.delete()
 
 @enforce_types
-def write_link_to_sql_index(link: Link):
+def write_snapshot_to_index(snapshot: Model):
     from core.models import Snapshot
-    info = {k: v for k, v in link._asdict().items() if k in Snapshot.keys}
-    tags = info.pop("tags")
-    if tags is None:
-        tags = []
-
     try:
-        info["timestamp"] = Snapshot.objects.get(url=link.url).timestamp
+        timestamp = Snapshot.objects.get(url=snapshot.url).timestamp
     except Snapshot.DoesNotExist:
-        while Snapshot.objects.filter(timestamp=info["timestamp"]).exists():
-            info["timestamp"] = str(float(info["timestamp"]) + 1.0)
+        timestamp = snapshot.timestamp
+        if not timestamp:
+            timestamp = str(datetime.now().timestamp())
+        while Snapshot.objects.filter(timestamp=timestamp).exists():
+            print("the timestamp is: ", timestamp)
+            timestamp = str(float(timestamp) + 1.0)
 
-    snapshot, _ = Snapshot.objects.update_or_create(url=link.url, defaults=info)
-    snapshot.save_tags(tags)
+    snapshot.timestamp = timestamp
+    snapshot.save()
     return snapshot
 
 
 @enforce_types
-def write_sql_main_index(links: List[Link], out_dir: Path=OUTPUT_DIR) -> None:
+def write_sql_main_index(snapshots: List[Model], out_dir: Path=OUTPUT_DIR) -> None:
     with transaction.atomic():
-        for link in links:
-            write_link_to_sql_index(link)
+        for snapshot in snapshots:
+            write_snapshot_to_index(snapshot)
             
 
 @enforce_types
-def write_sql_link_details(link: Link, out_dir: Path=OUTPUT_DIR) -> None:
+def write_sql_snapshot_details(snapshot: Model, out_dir: Path=OUTPUT_DIR) -> None:
     from core.models import Snapshot
 
     with transaction.atomic():
         try:
-            snap = Snapshot.objects.get(url=link.url)
+            snap = Snapshot.objects.get(url=snapshot.url)
         except Snapshot.DoesNotExist:
-            snap = write_link_to_sql_index(link)
-        snap.title = link.title
+            snap = write_snapshot_to_index(snapshot)
+        snap.title = snapshot.title
 
-        tag_set = (
-            set(tag.strip() for tag in (link.tags or '').split(','))
-        )
-        tag_list = list(tag_set) or []
+        # TODO: If there are actual tags, this will break
+        #tag_set = (
+        #    set(tag.strip() for tag in (snapshot.tags.all() or '').split(','))
+        #)
+        #tag_list = list(tag_set) or []
 
         snap.save()
-        snap.save_tags(tag_list)
+        #snap.save_tags(tag_list)
+        return snap
 
 
 

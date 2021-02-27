@@ -1,6 +1,10 @@
 __package__ = 'archivebox.core'
 
 import uuid
+from pathlib import Path
+from typing import Dict, Optional, List
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 from django.db import models, transaction
 from django.utils.functional import cached_property
@@ -9,9 +13,11 @@ from django.db.models import Case, When, Value, IntegerField
 
 from ..util import parse_date
 from ..index.schema import Link
-from ..extractors import get_default_archive_methods, ARCHIVE_METHODS_INDEXING_PRECEDENCE
+from ..config import CONFIG
+from ..system import get_dir_size
 
-EXTRACTORS = [(extractor[0], extractor[0]) for extractor in get_default_archive_methods()]
+#EXTRACTORS = [(extractor[0], extractor[0]) for extractor in get_default_archive_methods()]
+EXTRACTORS = [("title", "title"), ("wget", "wget")]
 STATUS_CHOICES = [
     ("succeeded", "succeeded"),
     ("failed", "failed"),
@@ -23,7 +29,6 @@ try:
 except AttributeError:
     import jsonfield
     JSONField = jsonfield.JSONField
-
 
 class Tag(models.Model):
     """
@@ -79,7 +84,7 @@ class Snapshot(models.Model):
     updated = models.DateTimeField(null=True, blank=True, db_index=True)
     tags = models.ManyToManyField(Tag)
 
-    keys = ('url', 'timestamp', 'title', 'tags', 'updated')
+    keys = ('id', 'url', 'timestamp', 'title', 'tags', 'updated', 'base_url')
 
     def __repr__(self) -> str:
         title = self.title or '-'
@@ -89,18 +94,63 @@ class Snapshot(models.Model):
         title = self.title or '-'
         return f'[{self.timestamp}] {self.url[:64]} ({title[:64]})'
 
+    def field_names():
+        fields = self._meta.get_field_names()
+        exclude = ["tags", "archiveresult"] # Exclude relationships for now
+        return [field.name for field in fields if field.name not in exclude]
+
+
     @classmethod
     def from_json(cls, info: dict):
         info = {k: v for k, v in info.items() if k in cls.keys}
+        if "tags" in info:
+            # TODO: Handle tags
+            info.pop("tags")
+        info.pop("base_url", None) 
         return cls(**info)
 
+    def get_history(self) -> dict:
+        """
+        Generates the history dictionary out of the stored ArchiveResults
+        """
+        history_list = self.archiveresult_set.all()
+        history = defaultdict(list)
+        for history_item in history_list:
+            history[history_item.extractor].append(
+                {
+                    "cmd": history_item.cmd,
+                    "cmd_version": history_item.cmd_version,
+                    "end_ts": history_item.end_ts.isoformat(),
+                    "start_ts": history_item.start_ts.isoformat(),
+                    "pwd": history_item.pwd,
+                    "output": history_item.output,
+                    "schema": "ArchiveResult",
+                    "status": history_item.status
+                }
+            )
+        return dict(history)
+
     def as_json(self, *args) -> dict:
+        """
+        Returns the snapshot in json format.
+        id is converted to str
+        history is extracted from ArchiveResult
+        """
         args = args or self.keys
-        return {
+        output = {
             key: getattr(self, key)
             if key != 'tags' else self.tags_str()
             for key in args
         }
+        if "id" in output.keys():
+            output["id"] = str(output["id"])
+
+        output["history"] = self.get_history()
+        return output
+
+    def as_csv(self, cols: Optional[List[str]]=None, separator: str=',', ljust: int=0) -> str:
+        from ..index.csv import to_csv
+        return to_csv(self, cols=cols or self.field_names(), separator=separator, ljust=ljust)
 
     def as_link(self) -> Link:
         return Link.from_json(self.as_json())
@@ -117,8 +167,49 @@ class Snapshot(models.Model):
         return parse_date(self.timestamp)
 
     @cached_property
-    def is_archived(self):
-        return self.as_link().is_archived
+    def bookmarked_date(self) -> Optional[str]:
+        from ..util import ts_to_date
+
+        max_ts = (datetime.now() + timedelta(days=30)).timestamp()
+
+        if self.timestamp and self.timestamp.replace('.', '').isdigit():
+            if 0 < float(self.timestamp) < max_ts:
+                return ts_to_date(datetime.fromtimestamp(float(self.timestamp)))
+            else:
+                return str(self.timestamp)
+        return None
+
+    @cached_property
+    def is_archived(self) -> bool:
+        from ..config import ARCHIVE_DIR
+        from ..util import domain
+
+        output_paths = (
+            domain(self.url),
+            'output.pdf',
+            'screenshot.png',
+            'output.html',
+            'media',
+            'singlefile.html'
+        )
+
+        return any(
+            (Path(ARCHIVE_DIR) / self.timestamp / path).exists()
+            for path in output_paths
+        )
+
+    @cached_property
+    def archive_dates(self) -> List[datetime]:
+        return [
+            result.start_ts
+            for result in self.archiveresult_set.all()
+        ]
+
+    @cached_property
+    def oldest_archive_date(self) -> Optional[datetime]:
+        oldest = self.archiveresult_set.all().order_by("-start_ts")[:1]
+        if len(oldest) > 0:
+            return oldest[0].start_ts
 
     @cached_property
     def num_outputs(self):
@@ -129,20 +220,26 @@ class Snapshot(models.Model):
         return self.as_link().url_hash
 
     @cached_property
-    def base_url(self):
-        return self.as_link().base_url
+    def base_url(self) -> str:
+        from ..util import base_url
+        return base_url(self.url)
 
     @cached_property
-    def link_dir(self):
-        return self.as_link().link_dir
+    def snapshot_dir(self):
+        from ..config import CONFIG
+        return Path(CONFIG['ARCHIVE_DIR']) / self.timestamp
 
     @cached_property
     def archive_path(self):
-        return self.as_link().archive_path
+        from ..config import ARCHIVE_DIR_NAME
+        return '{}/{}'.format(ARCHIVE_DIR_NAME, self.timestamp)
 
     @cached_property
-    def archive_size(self):
-        return self.as_link().archive_size
+    def archive_size(self) -> float:
+        try:
+            return get_dir_size(self.archive_path)[0]
+        except Exception:
+            return 0
 
     @cached_property
     def history(self):
@@ -158,6 +255,64 @@ class Snapshot(models.Model):
             return self.history['title'][-1].output.strip()
         return None
 
+    @cached_property
+    def domain(self) -> str:
+        from ..util import domain
+        return domain(self.url)
+
+    @cached_property
+    def is_static(self) -> bool:
+        from ..util import is_static_file
+        return is_static_file(self.url)
+
+    @cached_property
+    def details(self) -> Dict:
+        # TODO: Define what details are, and return them accordingly
+        return {"history": {}}
+
+    @property
+    def extension(self) -> str:
+        from ..util import extension
+        return extension(self.url)
+
+    def canonical_outputs(self) -> Dict[str, Optional[str]]:
+        """predict the expected output paths that should be present after archiving"""
+
+        from ..extractors.wget import wget_output_path
+        canonical = {
+            'index_path': 'index.html',
+            'favicon_path': 'favicon.ico',
+            'google_favicon_path': 'https://www.google.com/s2/favicons?domain={}'.format(self.domain),
+            'wget_path': wget_output_path(self),
+            'warc_path': 'warc',
+            'singlefile_path': 'singlefile.html',
+            'readability_path': 'readability/content.html',
+            'mercury_path': 'mercury/content.html',
+            'pdf_path': 'output.pdf',
+            'screenshot_path': 'screenshot.png',
+            'dom_path': 'output.html',
+            'archive_org_path': 'https://web.archive.org/web/{}'.format(self.base_url),
+            'git_path': 'git',
+            'media_path': 'media',
+        }
+        if self.is_static:
+            # static binary files like PDF and images are handled slightly differently.
+            # they're just downloaded once and aren't archived separately multiple times, 
+            # so the wget, screenshot, & pdf urls should all point to the same file
+
+            static_path = wget_output_path(self)
+            canonical.update({
+                'title': self.basename,
+                'wget_path': static_path,
+                'pdf_path': static_path,
+                'screenshot_path': static_path,
+                'dom_path': static_path,
+                'singlefile_path': static_path,
+                'readability_path': static_path,
+                'mercury_path': static_path,
+            })
+        return canonical
+
     def save_tags(self, tags=()):
         tags_id = []
         for tag in tags:
@@ -168,6 +323,7 @@ class Snapshot(models.Model):
 
 class ArchiveResultManager(models.Manager):
     def indexable(self, sorted: bool = True):
+        from ..extractors import ARCHIVE_METHODS_INDEXING_PRECEDENCE
         INDEXABLE_METHODS = [ r[0] for r in ARCHIVE_METHODS_INDEXING_PRECEDENCE ]
         qs = self.get_queryset().filter(extractor__in=INDEXABLE_METHODS,status='succeeded')
 
@@ -192,3 +348,6 @@ class ArchiveResult(models.Model):
 
     def __str__(self):
         return self.extractor
+
+    class Meta:
+        ordering = ["-start_ts"]

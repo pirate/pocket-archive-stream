@@ -84,7 +84,7 @@ def test_collision_urls_different_timestamps(tmp_path, process, disable_extracto
 
     init_process = subprocess.run(['archivebox', 'init'], capture_output=True, env=disable_extractors_dict)
     # 1 from duplicated url, 1 from corrupted index
-    assert "Skipped adding 2 invalid link data directories" in init_process.stdout.decode("utf-8")
+    assert "Skipped adding 2 invalid snapshot data directories" in init_process.stdout.decode("utf-8")
     assert init_process.returncode == 0
 
 def test_collision_timestamps_different_urls(tmp_path, process, disable_extractors_dict):
@@ -107,7 +107,7 @@ def test_collision_timestamps_different_urls(tmp_path, process, disable_extracto
         json.dump(link_details, f)
 
     init_process = subprocess.run(['archivebox', 'init'], capture_output=True, env=disable_extractors_dict)
-    assert "Skipped adding 1 invalid link data directories" in init_process.stdout.decode("utf-8")
+    assert "Skipped adding 1 invalid snapshot data directories" in init_process.stdout.decode("utf-8")
     assert init_process.returncode == 0
 
 def test_orphaned_folders(tmp_path, process, disable_extractors_dict):
@@ -124,7 +124,7 @@ def test_orphaned_folders(tmp_path, process, disable_extractors_dict):
     conn.close()
 
     init_process = subprocess.run(['archivebox', 'init'], capture_output=True, env=disable_extractors_dict)
-    assert "Added 1 orphaned links from existing JSON index" in init_process.stdout.decode("utf-8")
+    assert "Added 1 orphaned snapshots from deprecated JSON index" in init_process.stdout.decode("utf-8")
     assert init_process.returncode == 0
 
 def test_unrecognized_folders(tmp_path, process, disable_extractors_dict):
@@ -134,7 +134,7 @@ def test_unrecognized_folders(tmp_path, process, disable_extractors_dict):
     (tmp_path / "archive" / "some_random_folder").mkdir()
 
     init_process = subprocess.run(['archivebox', 'init'], capture_output=True, env=disable_extractors_dict)
-    assert "Skipped adding 1 invalid link data directories" in init_process.stdout.decode("utf-8")
+    assert "Skipped adding 1 invalid snapshot data directories" in init_process.stdout.decode("utf-8")
     assert init_process.returncode == 0
 
 def test_tags_migration(tmp_path, disable_extractors_dict):

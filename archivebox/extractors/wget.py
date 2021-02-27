@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
-from ..index.schema import Link, ArchiveResult, ArchiveOutput, ArchiveError
+from django.db.models import Model
+
+from ..index.schema import ArchiveResult, ArchiveOutput, ArchiveError
 from ..system import run, chmod_file
 from ..util import (
     enforce_types,
@@ -34,20 +36,20 @@ from ..logging_util import TimedProgress
 
 
 @enforce_types
-def should_save_wget(link: Link, out_dir: Optional[Path]=None, overwrite: Optional[bool]=False) -> bool:
-    output_path = wget_output_path(link)
-    out_dir = out_dir or Path(link.link_dir)
-    if not overwrite and output_path and (out_dir / output_path).exists():
+def should_save_wget(snapshot: Model, overwrite: Optional[bool]=False, out_dir: Optional[Path]=None) -> bool:
+    output_path = wget_output_path(snapshot)
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
+    if not overwrite output_path and (out_dir / output_path).exists():
         return False
 
     return SAVE_WGET
 
 
 @enforce_types
-def save_wget(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
+def save_wget(snapshot: Model, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
     """download full site using wget"""
 
-    out_dir = out_dir or link.link_dir
+    out_dir = out_dir or snapshot.snapshot_dir
     if SAVE_WARC:
         warc_dir = out_dir / "warc"
         warc_dir.mkdir(exist_ok=True)
@@ -68,14 +70,14 @@ def save_wget(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) ->
         *(['--compression=auto'] if WGET_AUTO_COMPRESSION else []),
         *([] if SAVE_WARC else ['--timestamping']),
         *([] if CHECK_SSL_VALIDITY else ['--no-check-certificate', '--no-hsts']),
-        link.url,
+        snapshot.url,
     ]
 
     status = 'succeeded'
     timer = TimedProgress(timeout, prefix='      ')
     try:
         result = run(cmd, cwd=str(out_dir), timeout=timeout)
-        output = wget_output_path(link)
+        output = wget_output_path(snapshot)
 
         # parse out number of files downloaded from last line of stderr:
         #  "Downloaded: 76 files, 4.0M in 1.6s (2.52 MB/s)"
@@ -126,13 +128,13 @@ def save_wget(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) ->
 
 
 @enforce_types
-def wget_output_path(link: Link) -> Optional[str]:
+def wget_output_path(snapshot: Model) -> Optional[str]:
     """calculate the path to the wgetted .html file, since wget may
     adjust some paths to be different than the base_url path.
 
     See docs on wget --adjust-extension (-E)
     """
-    
+
     # Wget downloads can save in a number of different ways depending on the url:
     #    https://example.com
     #       > example.com/index.html
@@ -164,8 +166,8 @@ def wget_output_path(link: Link) -> Optional[str]:
     # and there's no way to get the computed output path from wget
     # in order to avoid having to reverse-engineer how they calculate it,
     # we just look in the output folder read the filename wget used from the filesystem
-    full_path = without_fragment(without_query(path(link.url))).strip('/')
-    search_dir = Path(link.link_dir) / domain(link.url).replace(":", "+") / urldecode(full_path)
+    full_path = without_fragment(without_query(path(snapshot.url))).strip('/')
+    search_dir = Path(snapshot.snapshot_dir) / domain(snapshot.url).replace(":", "+") / urldecode(full_path)
     for _ in range(4):
         if search_dir.exists():
             if search_dir.is_dir():
@@ -174,7 +176,7 @@ def wget_output_path(link: Link) -> Optional[str]:
                     if re.search(".+\\.[Ss]?[Hh][Tt][Mm][Ll]?$", str(f), re.I | re.M)
                 ]
                 if html_files:
-                    return str(html_files[0].relative_to(link.link_dir))
+                    return str(html_files[0].relative_to(snapshot.snapshot_dir))
 
                 # sometimes wget'd URLs have no ext and return non-html
                 # e.g. /some/example/rss/all -> some RSS XML content)
@@ -183,23 +185,23 @@ def wget_output_path(link: Link) -> Optional[str]:
                 last_part_of_url = urldecode(full_path.rsplit('/', 1)[-1])
                 for file_present in search_dir.iterdir():
                     if file_present == last_part_of_url:
-                        return str((search_dir / file_present).relative_to(link.link_dir))
+                        return str((search_dir / file_present).relative_to(snapshot.snapshot_dir))
 
         # Move up one directory level
         search_dir = search_dir.parent
 
-        if str(search_dir) == link.link_dir:
+        if search_dir == snapshot.snapshot_dir:
             break
 
     # check for literally any file present that isnt an empty folder
-    domain_dir = Path(domain(link.url).replace(":", "+"))
-    files_within = list((Path(link.link_dir) / domain_dir).glob('**/*.*'))
+    domain_dir = Path(domain(snapshot.url).replace(":", "+"))
+    files_within = list((Path(snapshot.snapshot_dir) / domain_dir).glob('**/*.*'))
     if files_within:
-        return str((domain_dir / files_within[-1]).relative_to(link.link_dir))
+        return str((domain_dir / files_within[-1]).relative_to(snapshot.snapshot_dir))
     
-    # fallback to just the domain dir
-    search_dir = Path(link.link_dir) / domain(link.url).replace(":", "+")
+    # fallback to just the domain dir, dont try to introspect further inside it
+    search_dir = Path(snapshot.snapshot_dir) / domain(snapshot.url).replace(":", "+")
     if search_dir.is_dir():
-        return domain(link.url).replace(":", "+")
+        return domain(snapshot.url).replace(":", "+")
 
     return None

@@ -4,7 +4,8 @@ __package__ = 'archivebox.parsers'
 from typing import IO, Iterable
 from datetime import datetime
 
-from ..index.schema import Link
+from django.db.models import Model
+
 from ..util import (
     htmldecode,
     enforce_types,
@@ -13,8 +14,9 @@ from ..util import (
 
 
 @enforce_types
-def parse_wallabag_atom_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_wallabag_atom_export(rss_file: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse Wallabag Atom files into links"""
+    from core.models import Snapshot
 
     rss_file.seek(0)
     entries = rss_file.read().split('<entry>')[1:]
@@ -48,10 +50,10 @@ def parse_wallabag_atom_export(rss_file: IO[str], **_kwargs) -> Iterable[Link]:
         except Exception:
             tags = None
 
-        yield Link(
+        yield Snapshot(
             url=htmldecode(url),
             timestamp=str(time.timestamp()),
             title=htmldecode(title) or None,
-            tags=tags or '',
-            sources=[rss_file.name],
+            #tags=tags or '',
+            #sources=[rss_file.name],
         )

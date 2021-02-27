@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Optional
 import json
 
-from ..index.schema import Link, ArchiveResult, ArchiveError
+from django.db.models import Model
+
+from ..index.schema import ArchiveResult, ArchiveError
 from ..system import run, chmod_file
 from ..util import (
     enforce_types,
@@ -23,8 +25,9 @@ from ..logging_util import TimedProgress
 
 
 @enforce_types
-def should_save_singlefile(link: Link, out_dir: Optional[Path]=None, overwrite: Optional[bool]=False) -> bool:
-    if is_static_file(link.url):
+def should_save_singlefile(snapshot: Model, overwrite: Optional[bool]=False, out_dir: Optional[Path]=None) -> bool:
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
+    if is_static_file(snapshot.url):
         return False
 
     out_dir = out_dir or Path(link.link_dir)
@@ -35,10 +38,10 @@ def should_save_singlefile(link: Link, out_dir: Optional[Path]=None, overwrite: 
 
 
 @enforce_types
-def save_singlefile(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
+def save_singlefile(snapshot: Model, out_dir: Optional[Path]=None, timeout: int=TIMEOUT) -> ArchiveResult:
     """download full site using single-file"""
 
-    out_dir = out_dir or Path(link.link_dir)
+    out_dir = out_dir or Path(snapshot.snapshot_dir)
     output = "singlefile.html"
 
     browser_args = chrome_args(TIMEOUT=0)
@@ -49,7 +52,8 @@ def save_singlefile(link: Link, out_dir: Optional[Path]=None, timeout: int=TIMEO
         DEPENDENCIES['SINGLEFILE_BINARY']['path'],
         '--browser-executable-path={}'.format(CHROME_BINARY),
         browser_args,
-        link.url,
+        snapshot.url,
+        output
         output,
     ]
 

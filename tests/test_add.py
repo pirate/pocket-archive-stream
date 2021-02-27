@@ -35,6 +35,7 @@ def test_depth_flag_0_crawls_only_the_arg_page(tmp_path, process, disable_extrac
     archived_item_path = list(tmp_path.glob('archive/**/*'))[0]
     with open(archived_item_path / "index.json", "r") as f:
         output_json = json.load(f)
+
     assert output_json["base_url"] == "127.0.0.1:8080/static/example.com.html"
 
 
@@ -91,3 +92,4 @@ def test_extract_input_uses_only_passed_extractors(tmp_path, process):
 
     assert (archived_item_path / "warc").exists()
     assert not (archived_item_path / "singlefile.html").exists()
+

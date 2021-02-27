@@ -22,7 +22,7 @@ from index.html import snapshot_icons
 from logging_util import printable_filesize
 from main import add, remove
 from config import OUTPUT_DIR
-from extractors import archive_links
+from extractors import archive_snapshots
 
 # Admin URLs
 # /admin/

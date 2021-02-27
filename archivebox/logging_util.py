@@ -303,7 +303,7 @@ def log_archiving_finished(num_links: int):
     print('        archivebox server 0.0.0.0:8000')
 
 
-def log_link_archiving_started(link: "Link", link_dir: str, is_new: bool):
+def log_snapshot_archiving_started(snapshot: Model, snapshot_dir: str, is_new: bool):
     # [*] [2019-03-22 13:46:45] "Log Structured Merge Trees - ben stopford"
     #     http://www.benstopford.com/2015/02/14/log-structured-merge-trees/
     #     > output/archive/1478739709
@@ -312,16 +312,16 @@ def log_link_archiving_started(link: "Link", link_dir: str, is_new: bool):
         symbol_color=ANSI['green' if is_new else 'black'],
         symbol='+' if is_new else '√',
         now=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        title=link.title or link.base_url,
+        title=snapshot.title or snapshot.base_url,
         **ANSI,
     ))
-    print('    {blue}{url}{reset}'.format(url=link.url, **ANSI))
+    print('    {blue}{url}{reset}'.format(url=snapshot.url, **ANSI))
     print('    {} {}'.format(
         '>' if is_new else '√',
-        pretty_path(link_dir),
+        pretty_path(snapshot_dir),
     ))
 
-def log_link_archiving_finished(link: "Link", link_dir: str, is_new: bool, stats: dict):
+def log_snapshot_archiving_finished(snapshot: Model, snapshot_dir: str, is_new: bool, stats: dict):
     total = sum(stats.values())
 
     if stats['failed'] > 0 :
@@ -395,49 +395,49 @@ def log_list_started(filter_patterns: Optional[List[str]], filter_type: str):
     ))
     print('    {}'.format(' '.join(filter_patterns or ())))
 
-def log_list_finished(links):
-    from .index.csv import links_to_csv
+def log_list_finished(snapshots):
+    from .index.csv import snapshots_to_csv
     print()
     print('---------------------------------------------------------------------------------------------------')
-    print(links_to_csv(links, cols=['timestamp', 'is_archived', 'num_outputs', 'url'], header=True, ljust=16, separator=' | '))
+    print(snapshots_to_csv(snapshots, cols=['timestamp', 'is_archived', 'num_outputs', 'url'], header=True, ljust=16, separator=' | '))
     print('---------------------------------------------------------------------------------------------------')
     print()
 
 
-def log_removal_started(links: List["Link"], yes: bool, delete: bool):
-    print('{lightyellow}[i] Found {} matching URLs to remove.{reset}'.format(len(links), **ANSI))
+def log_removal_started(snapshots: List["Snapshot"], yes: bool, delete: bool):
+    print('{lightyellow}[i] Found {} matching URLs to remove.{reset}'.format(len(snapshots), **ANSI))
     if delete:
-        file_counts = [link.num_outputs for link in links if Path(link.link_dir).exists()]
+        file_counts = [snapshot.num_outputs for snapshot in snapshots if Path(snapshot.snapshot_dir).exists()]
         print(
-            f'    {len(links)} Links will be de-listed from the main index, and their archived content folders will be deleted from disk.\n'
+            f'    {len(snapshots)} Snapshots will be de-listed from the main index, and their archived content folders will be deleted from disk.\n'
             f'    ({len(file_counts)} data folders with {sum(file_counts)} archived files will be deleted!)'
         )
     else:
         print(
-            '    Matching links will be de-listed from the main index, but their archived content folders will remain in place on disk.\n'
+            '    Matching snapshots will be de-listed from the main index, but their archived content folders will remain in place on disk.\n'
             '    (Pass --delete if you also want to permanently delete the data folders)'
         )
 
     if not yes:
         print()
-        print('{lightyellow}[?] Do you want to proceed with removing these {} links?{reset}'.format(len(links), **ANSI))
+        print('{lightyellow}[?] Do you want to proceed with removing these {} snapshots?{reset}'.format(len(snapshots), **ANSI))
         try:
             assert input('    y/[n]: ').lower() == 'y'
         except (KeyboardInterrupt, EOFError, AssertionError):
             raise SystemExit(0)
 
-def log_removal_finished(all_links: int, to_remove: int):
-    if all_links == 0:
+def log_removal_finished(all_snapshots: int, to_remove: int):
+    if to_remove == 0:
         print()
-        print('{red}[X] No matching links found.{reset}'.format(**ANSI))
+        print('{red}[X] No matching snapshots found.{reset}'.format(**ANSI))
     else:
         print()
-        print('{red}[√] Removed {} out of {} links from the archive index.{reset}'.format(
+        print('{red}[√] Removed {} out of {} snapshots from the archive index.{reset}'.format(
             to_remove,
-            all_links,
+            all_snapshots,
             **ANSI,
         ))
-        print('    Index now contains {} links.'.format(all_links - to_remove))
+        print('    Index now contains {} snapshots.'.format(all_snapshots - to_remove))
 
 
 def log_shell_welcome_msg():

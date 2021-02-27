@@ -5,7 +5,8 @@ import json
 from typing import IO, Iterable
 from datetime import datetime
 
-from ..index.schema import Link
+from django.db.models import Model
+
 from ..util import (
     htmldecode,
     enforce_types,
@@ -13,8 +14,9 @@ from ..util import (
 
 
 @enforce_types
-def parse_generic_json_export(json_file: IO[str], **_kwargs) -> Iterable[Link]:
+def parse_generic_json_export(json_file: IO[str], **_kwargs) -> Iterable[Model]:
     """Parse JSON-format bookmarks export files (produced by pinboard.in/export/, or wallabag)"""
+    from core.models import Snapshot
 
     json_file.seek(0)
     links = json.load(json_file)
@@ -56,10 +58,10 @@ def parse_generic_json_export(json_file: IO[str], **_kwargs) -> Iterable[Link]:
             elif link.get('name'):
                 title = link['name'].strip()
 
-            yield Link(
+            yield Snapshot(
                 url=htmldecode(url),
                 timestamp=ts_str,
                 title=htmldecode(title) or None,
-                tags=htmldecode(link.get('tags')) or '',
-                sources=[json_file.name],
+                #tags=htmldecode(link.get('tags')) or '',
+                #sources=[json_file.name],
             )

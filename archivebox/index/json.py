@@ -7,6 +7,7 @@ from pathlib import Path
 
 from datetime import datetime
 from typing import List, Optional, Iterator, Any, Union
+from django.db.models import Model
 
 from .schema import Link
 from ..system import atomic_write
@@ -40,17 +41,18 @@ MAIN_INDEX_HEADER = {
 }
 
 @enforce_types
-def generate_json_index_from_links(links: List[Link], with_headers: bool):
+def generate_json_index_from_snapshots(snapshots: List[Model], with_headers: bool):
+    snapshots_json = [snapshot.as_json() for snapshot in snapshots]
     if with_headers:
         output = {
             **MAIN_INDEX_HEADER,
-            'num_links': len(links),
+            'num_links': len(snapshots),
             'updated': datetime.now(),
             'last_run_cmd': sys.argv,
-            'links': links,
+            'links': snapshots_json,
         }
     else:
-        output = links
+        output = snapshots_json
     return to_json(output, indent=4, sort_keys=True)
 
 
@@ -81,41 +83,46 @@ def parse_json_main_index(out_dir: Path=OUTPUT_DIR) -> Iterator[Link]:
 ### Link Details Index
 
 @enforce_types
-def write_json_link_details(link: Link, out_dir: Optional[str]=None) -> None:
-    """write a json file with some info about the link"""
+def write_json_snapshot_details(snapshot: Model, out_dir: Optional[str]=None) -> None:
+    """write a json file with some info about the snapshot"""
     
-    out_dir = out_dir or link.link_dir
+    out_dir = out_dir or snapshot.snapshot_dir
     path = Path(out_dir) / JSON_INDEX_FILENAME
-    atomic_write(str(path), link._asdict(extended=True))
+    atomic_write(str(path), snapshot.as_json())
 
 
 @enforce_types
-def parse_json_link_details(out_dir: Union[Path, str], guess: Optional[bool]=False) -> Optional[Link]:
-    """load the json link index from a given directory"""
+def load_json_snapshot(out_dir: Path) -> Optional[Model]:
+    """
+    Loads the detail from the local json index
+    """
+    from core.models import Snapshot
+
     existing_index = Path(out_dir) / JSON_INDEX_FILENAME
     if existing_index.exists():
         with open(existing_index, 'r', encoding='utf-8') as f:
             try:
-                link_json = pyjson.load(f)
-                return Link.from_json(link_json, guess)
+                output = pyjson.load(f)
+                output = Snapshot.from_json(output)
+                return output
             except pyjson.JSONDecodeError:
                 pass
     return None
 
 
 @enforce_types
-def parse_json_links_details(out_dir: Union[Path, str]) -> Iterator[Link]:
-    """read through all the archive data folders and return the parsed links"""
+def parse_json_snapshot_details(out_dir: Union[Path, str]) -> Iterator[dict]:
+    """read through all the archive data folders and return the parsed snapshots"""
 
     for entry in os.scandir(Path(out_dir) / ARCHIVE_DIR_NAME):
         if entry.is_dir(follow_symlinks=True):
             if (Path(entry.path) / 'index.json').exists():
                 try:
-                    link = parse_json_link_details(entry.path)
+                    snapshot_details = load_json_snapshot(Path(entry.path))
                 except KeyError:
-                    link = None
-                if link:
-                    yield link
+                    snapshot_details = None
+                if snapshot_details:
+                    yield snapshot_details
 
 
 
