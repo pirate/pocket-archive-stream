@@ -38,17 +38,17 @@ jobs:
         run: |
           cd deb_dist/
           sudo apt-get install ./archivebox*.deb
+          cd ..
+          python3 -c 'from distutils.core import run_setup; result = run_setup("./setup.py", stop_after="init"); print("\n".join(result.install_requires + result.extras_require["sonic"]))' > ./requirements.txt
+          python3 -m pip install -r ./requirements.txt
 
       - name: Check ArchiveBox version
         run: |
           # must create dir needed for snaps to run as non-root on github actions
           sudo mkdir -p /run/user/1001 && sudo chmod -R 777 /run/user/1001
           mkdir "${{ github.workspace }}/data" && cd "${{ github.workspace }}/data"
-          archivebox init
-          archivebox config --set SAVE_READABILITY=False
-          archivebox config --set SAVE_MERCURY=False
-          archivebox config --set SAVE_SINGLEFILE=False
           archivebox --version
+          archivebox init --setup
 
       - name: Add some links to test
         run: |

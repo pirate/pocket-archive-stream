@@ -2,7 +2,7 @@
 
 In this folder are some example config files you can use for setting up ArchiveBox on your machine.
 
-E.g. see `etc/nginx` for an example nginx config to serve your archive, or `etc/cron` for an example cron job that crawls a feed every 24 hours.
+E.g. see `nginx.conf` for an example nginx config to serve your archive with SSL, or `fly.toml` for an example deployment to the Fly.io hosting platform.
 
 Please contribute your etc files here! Example contributions
 

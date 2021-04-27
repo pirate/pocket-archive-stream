@@ -43,7 +43,7 @@
             {% if absolute_add_path %}
             <center id="bookmarklet">
               <p>Bookmark this link to quickly add to your archive:
-                <a href="javascript:void(window.open('{{ absolute_add_path }}?url='+document.location.href));">Add to ArchiveBox</a></p>
+                <a href="javascript:void(window.open('{{ absolute_add_path }}?url='+encodeURIComponent(document.location.href)));">Add to ArchiveBox</a></p>
             </center>
             {% endif %}
             <script>

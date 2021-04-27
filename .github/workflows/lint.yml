@@ -28,7 +28,8 @@ jobs:
 
       - name: Lint with flake8
         run: |
+          cd archivebox
           # one pass for show-stopper syntax errors or undefined names
-          flake8 archivebox --count --show-source --statistics
+          flake8 . --count --show-source --statistics
           # one pass for small stylistic things
-          flake8 archivebox --count --max-line-length="$MAX_LINE_LENGTH" --statistics
+          flake8 . --count --max-line-length="$MAX_LINE_LENGTH" --statistics

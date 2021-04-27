@@ -3,4 +3,4 @@ ignore = D100,D101,D102,D103,D104,D105,D202,D203,D205,D400,E131,E241,E252,E266,E
 select = F,E9,W
 max-line-length = 130
 max-complexity = 10
-exclude = migrations,tests,node_modules,vendor,static,venv,.venv,.venv2,.docker-venv
+exclude = migrations,tests,node_modules,vendor,venv,.venv,.venv2,.docker-venv

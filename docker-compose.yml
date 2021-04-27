@@ -13,7 +13,7 @@ version: '2.4'
 services:
     archivebox:
         # build: .                              # for developers working on archivebox
-        image: ${DOCKER_IMAGE:-archivebox/archivebox:latest}
+        image: ${DOCKER_IMAGE:-archivebox/archivebox:0.6.2}
         command: server --quick-init 0.0.0.0:8000
         ports:
             - 8000:8000

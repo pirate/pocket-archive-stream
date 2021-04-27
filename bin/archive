@@ -1,11 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# DEPRECATED: this helper exists for backwards compatibility with <v0.4 only
+# Do not use this to call archivebox, instead use the archivebox binary directly.
 
 if python3 -m django --version >/dev/null 2>&1; then
     python3 -m archivebox "$*"
 else
-    echo '[X] ArchiveBox must be installed before using:'
-    echo "    pip install archivebox"
+    echo '[X] ArchiveBox not found, is it installed and present in your $PATH?'
+    echo '    pip3 install archivebox'
     echo
-    echo "Hint: Did you forget to activate a virtuenv or set your $$PATH?"
+    echo 'Hint: Did you forget to activate a virtualenv?'
     exit 2
 fi

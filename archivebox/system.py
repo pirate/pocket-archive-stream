@@ -14,11 +14,11 @@ from crontab import CronTab
 from .vendor.atomicwrites import atomic_write as lib_atomic_write
 
 from .util import enforce_types, ExtendedEncoder
-from .config import OUTPUT_PERMISSIONS
+from .config import PYTHON_BINARY, OUTPUT_PERMISSIONS
 
 
 
-def run(*args, input=None, capture_output=True, timeout=None, check=False, text=False, start_new_session=True, **kwargs):
+def run(cmd, *args, input=None, capture_output=True, timeout=None, check=False, text=False, start_new_session=True, **kwargs):
     """Patched of subprocess.run to kill forked child subprocesses and fix blocking io making timeout=innefective
         Mostly copied from https://github.com/python/cpython/blob/master/Lib/subprocess.py
     """
@@ -37,7 +37,10 @@ def run(*args, input=None, capture_output=True, timeout=None, check=False, text=
 
     pgid = None
     try:
-        with Popen(*args, start_new_session=start_new_session, **kwargs) as process:
+        if isinstance(cmd, (list, tuple)) and cmd[0].endswith('.py'):
+            cmd = (PYTHON_BINARY, *cmd)
+
+        with Popen(cmd, *args, start_new_session=start_new_session, **kwargs) as process:
             pgid = os.getpgid(process.pid)
             try:
                 stdout, stderr = process.communicate(input, timeout=timeout)

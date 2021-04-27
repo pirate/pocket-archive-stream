@@ -71,7 +71,8 @@ RUN npm ci
 WORKDIR "$CODE_DIR"
 ENV PATH="${PATH}:$VENV_PATH/bin"
 RUN python -m venv --clear --symlinks "$VENV_PATH" \
-    && pip install --upgrade --quiet pip setuptools
+    && pip install --upgrade --quiet pip setuptools \
+    && mkdir -p "$CODE_DIR/archivebox"
 ADD "./setup.py" "$CODE_DIR/"
 ADD "./package.json" "$CODE_DIR/archivebox/"
 RUN apt-get update -qq \

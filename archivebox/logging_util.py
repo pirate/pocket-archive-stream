@@ -108,12 +108,12 @@ def reject_stdin(caller: str, stdin: Optional[IO]=sys.stdin) -> None:
     if not stdin.isatty():
         # stderr('READING STDIN TO REJECT...')
         stdin_raw_text = stdin.read()
-        if stdin_raw_text:
+        if stdin_raw_text.strip():
             # stderr('GOT STDIN!', len(stdin_str))
-            stderr(f'[X] The "{caller}" command does not accept stdin.', color='red')
+            stderr(f'[!] The "{caller}" command does not accept stdin (ignoring).', color='red')
             stderr(f'    Run archivebox "{caller} --help" to see usage and examples.')
             stderr()
-            raise SystemExit(1)
+            # raise SystemExit(1)
     return None
 
 

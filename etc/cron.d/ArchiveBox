@@ -1,1 +1,0 @@
-0 24 * * * www-data /opt/ArchiveBox/bin/archive "https://getpocket.com/users/example/feed/all" >> /var/log/ArchiveBox.log

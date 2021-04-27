@@ -1,6 +1,0 @@
-[flake8]
-ignore = D100,D101,D102,D103,D104,D105,D202,D203,D205,D400,E131,E241,E252,E266,E272,E701,E731,W293,W503,W291,W391
-select = F,E9,W
-max-line-length = 130
-max-complexity = 10
-exclude = migrations,tests,node_modules,vendor,venv,.venv,.venv2,.docker-venv

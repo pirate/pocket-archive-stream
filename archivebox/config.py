@@ -48,6 +48,15 @@ from .config_stubs import (
     ConfigDefaultDict,
 )
 
+SYSTEM_USER = getpass.getuser() or os.getlogin()
+
+try:
+    import pwd
+    SYSTEM_USER = pwd.getpwuid(os.geteuid()).pw_name or SYSTEM_USER
+except ModuleNotFoundError:
+    # pwd is only needed for some linux systems, doesn't exist on windows
+    pass
+
 ############################### Config Schema ##################################
 
 CONFIG_SCHEMA: Dict[str, ConfigDefaultDict] = {
@@ -312,7 +321,7 @@ ALLOWED_IN_OUTPUT_DIR = {
 
 DYNAMIC_CONFIG_SCHEMA: ConfigDefaultDict = {
     'TERM_WIDTH':               {'default': lambda c: lambda: shutil.get_terminal_size((100, 10)).columns},
-    'USER':                     {'default': lambda c: getpass.getuser() or os.getlogin()},
+    'USER':                     {'default': lambda c: SYSTEM_USER},
     'ANSI':                     {'default': lambda c: DEFAULT_CLI_COLORS if c['USE_COLOR'] else {k: '' for k in DEFAULT_CLI_COLORS.keys()}},
 
     'PACKAGE_DIR':              {'default': lambda c: Path(__file__).resolve().parent},
@@ -986,6 +995,11 @@ def check_system_config(config: ConfigDict=CONFIG) -> None:
     if sys.version_info[:3] < (3, 6, 0):
         stderr(f'[X] Python version is not new enough: {config["PYTHON_VERSION"]} (>3.6 is required)', color='red')
         stderr('    See https://github.com/ArchiveBox/ArchiveBox/wiki/Troubleshooting#python for help upgrading your Python installation.')
+        raise SystemExit(2)
+
+    if int(CONFIG['DJANGO_VERSION'].split('.')[0]) < 3:
+        stderr(f'[X] Django version is not new enough: {config["DJANGO_VERSION"]} (>3.0 is required)', color='red')
+        stderr('    Upgrade django using pip or your system package manager: pip3 install --upgrade django')
         raise SystemExit(2)
 
     if config['PYTHON_ENCODING'] not in ('UTF-8', 'UTF8'):

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 PKG_NAME = "archivebox"
-DESCRIPTION = "The self-hosted internet archive."
+DESCRIPTION = "Self-hosted internet archiving solution."
 LICENSE = "MIT"
 AUTHOR = "Nick Sweeting"
 AUTHOR_EMAIL="git@nicksweeting.com"
@@ -15,9 +15,10 @@ PROJECT_URLS = {
     "Source":           f"{REPO_URL}",
     "Documentation":    f"{REPO_URL}/wiki",
     "Bug Tracker":      f"{REPO_URL}/issues",
-    "Changelog":        f"{REPO_URL}/wiki/Changelog",
+    "Changelog":        f"{REPO_URL}/releases",
     "Roadmap":          f"{REPO_URL}/wiki/Roadmap",
     "Community":        f"{REPO_URL}/wiki/Web-Archiving-Community",
+    "Demo":             f"https://demo.archivebox.io",
     "Donate":           f"{REPO_URL}/wiki/Donations",
 }
 
@@ -39,12 +40,12 @@ INSTALL_REQUIRES = [
     "mypy-extensions>=0.4.3",
     "django>=3.1.3,<3.2",
     "django-extensions>=3.0.3",
-    "dateparser",
-    "ipython",
-    "youtube-dl",
+    "dateparser>=1.0.0",
+    "youtube-dl>=2021.04.17",
     "python-crontab>=2.5.1",
     "croniter>=0.3.34",
     "w3lib>=1.22.0",
+    "ipython>5.0.0",
 ]
 EXTRAS_REQUIRE = {
     'sonic': [
@@ -133,6 +134,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Framework :: Django",
         "Typing :: Typed",
     ],
