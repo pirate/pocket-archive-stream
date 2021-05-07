@@ -1,6 +1,7 @@
 import json
 import setuptools
 from setuptools.command.test import test
+from setuptools import find_packages
 
 from pathlib import Path
 
@@ -99,7 +100,7 @@ setuptools.setup(
     setup_requires=SETUP_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
-    packages=[PKG_NAME],
+    packages=[PKG_NAME] + find_packages(),
     include_package_data=True,   # see MANIFEST.in
     entry_points={
         "console_scripts": [
