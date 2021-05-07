@@ -74,7 +74,7 @@ CONFIG_SCHEMA: Dict[str, ConfigDefaultDict] = {
         'ONLY_NEW':                 {'type': bool,  'default': True},
         'TIMEOUT':                  {'type': int,   'default': 60},
         'MEDIA_TIMEOUT':            {'type': int,   'default': 3600},
-        'OUTPUT_PERMISSIONS':       {'type': str,   'default': '755'},
+        'OUTPUT_PERMISSIONS':       {'type': str,   'default': '644'},
         'RESTRICT_FILE_NAMES':      {'type': str,   'default': 'windows'},
         'URL_BLACKLIST':            {'type': str,   'default': r'\.(css|js|otf|ttf|woff|woff2|gstatic\.com|googleapis\.com/css)(\?.*)?$'},  # to avoid downloading code assets as their own pages
     },
